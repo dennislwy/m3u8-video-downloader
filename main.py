@@ -83,7 +83,6 @@ async def download_parse_m3u8(m3u8_url: str) -> list[str]:
     if is_m3u8_master:
         os.remove(m3u8_file)
         m3u8_url = f'{base_url}/{m3u8_master_url}'
-        print(m3u8_url)
         m3u8_file = f'{temp_dir}/{get_filename_from_url(m3u8_url)}'
         async with aiohttp.ClientSession() as session:
             await download_file(session, m3u8_url, m3u8_file)
@@ -192,9 +191,8 @@ async def download_file(session, url, file_path):
     """
     # remove query parameters from url
     url_without_params = url.split('?')[0]
-    filename_from_url = get_filename_from_url(url)
 
-    print(f"Downloading '{url_without_params}'")
+    print(f"Downloading '{url}'")
     async with session.get(url) as response:
         if response.status == 200:
             with open(file_path, 'wb') as f:
@@ -203,7 +201,7 @@ async def download_file(session, url, file_path):
                     if not chunk:
                         break
                     f.write(chunk)
-                print(f"Downloaded '{url_without_params}'")
+                print(f"Downloaded '{get_filename_from_url(url_without_params)}'")
         else:
             print(f"Failed to download '{url_without_params}'")
 
@@ -239,7 +237,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='m3u8 Video Downloader')
     parser.add_argument('-url', '-u', type=str, required=True, help='The m3u8 url to process')
     parser.add_argument('-output', '-o', type=str, required=False, help='The output file name')
+    parser.add_argument('-path', '-p', type=str, required=False, help='The output directory')
 
     args = parser.parse_args()
 
-    asyncio.run(main(m3u8_url=args.url, output_file=args.output))
+    asyncio.run(main(m3u8_url=args.url, output_file=args.output, output_dir=args.path))
