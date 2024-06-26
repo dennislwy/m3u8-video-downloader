@@ -7,9 +7,7 @@ import asyncio
 import aiohttp
 
 temp_dir = 'temp' # Directory to save downloaded .ts files
-output_dir = 'output' # Directory to save the final .mp4 file
 os.makedirs(temp_dir, exist_ok=True)
-os.makedirs(output_dir, exist_ok=True)
 
 async def main(m3u8_url: str,
                output_file: str | None = None,
@@ -33,6 +31,7 @@ async def main(m3u8_url: str,
         output_file = f"{output_file}.mp4"
 
     output_dir = "output" if output_dir is None else output_dir
+    os.makedirs(output_dir, exist_ok=True)
 
     # download m3u8_url & parse for .ts files
     ts_urls = await download_parse_m3u8(m3u8_url)
