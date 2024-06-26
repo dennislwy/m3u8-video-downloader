@@ -53,7 +53,7 @@ async def main(m3u8_url: str,
     if success:
         print("Deleting temp files")
         for ts_file in ts_files:
-            os.remove(ts_file)
+            os.remove(f'{temp_dir}/{ts_file}')
         os.remove(ts_list_file)
 
 async def download_parse_m3u8(m3u8_url: str) -> list[str]:
