@@ -56,11 +56,11 @@ pip install -r requirements.txt
 ## Usage
 You can run the script with the following command:
 ```bash
-poetry run python main.py --m3u8_url "your_m3u8_url"
+poetry run python main.py -u "your_m3u8_url"
 ```
 
 You can also specify the output file name and directory:
 ```bash
-poetry run python main.py --m3u8_url "your_m3u8_url" --output_file "your_output_file.mp4" --output_dir "your_output_directory"
+poetry run python main.py -u "your_m3u8_url" -o "your_output_file.mp4" -p "your_output_directory"
 ```
 By default, if no output file name is provided, a timestamped name will be used. If no output directory is provided, the 'output' directory will be used.

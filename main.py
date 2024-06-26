@@ -29,6 +29,9 @@ async def main(m3u8_url: str,
     ts = str(int(time.time()*1000))
 
     output_file = f"{ts}-output.mp4" if output_file is None else output_file
+    if not output_file.endswith('.mp4'):
+        output_file = f"{output_file}.mp4"
+
     output_dir = "output" if output_dir is None else output_dir
 
     # download m3u8_url & parse for .ts files
@@ -234,9 +237,9 @@ async def ts_files_to_mp4(file: str, output: str) -> bool:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='m3u8 Video Downloader')
-    parser.add_argument('-m3u8', type=str, required=True, help='The m3u8 url to process')
-    parser.add_argument('-output', type=str, required=False, help='The output file name')
+    parser.add_argument('-url', '-u', type=str, required=True, help='The m3u8 url to process')
+    parser.add_argument('-output', '-o', type=str, required=False, help='The output file name')
 
     args = parser.parse_args()
 
-    asyncio.run(main(m3u8_url=args.m3u8, output_file=args.output))
+    asyncio.run(main(m3u8_url=args.url, output_file=args.output))
