@@ -54,7 +54,7 @@ async def main(m3u8_url: str,
         chunk_urls = await download_parse_m3u8(session, m3u8_url)
 
         # Download the chunk files
-        await download_files(session, chunk_urls, TEMP_DIR, prefix=epoch_ms)
+        await download_files(session, chunk_urls, TEMP_DIR, prefix=epoch_ms, max_concurrent_tasks=6)
 
     # Create a list of the chunk file names
     chunk_files = [f'{epoch_ms}-file{i+1}.ts' for i in range(len(chunk_urls))]
@@ -234,7 +234,11 @@ async def download_file(session: aiohttp.ClientSession, url: str, file_path: str
         print(f"Failed to download '{filename}'")
         return False
 
-async def download_files(session: aiohttp.ClientSession, urls: list[str], output_dir: str, prefix: str='', max_concurrent_tasks: int=10):
+async def download_files(session: aiohttp.ClientSession,
+                         urls: list[str],
+                         output_dir: str,
+                         prefix: str='',
+                         max_concurrent_tasks: int=10):
     """
     Downloads multiple files concurrently from the given URLs and saves them to the specified
     directory.
