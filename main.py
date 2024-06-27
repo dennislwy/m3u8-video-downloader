@@ -18,15 +18,18 @@ async def main(m3u8_url: str,
     """
     Downloads and converts a video from an m3u8 URL to an mp4 file.
 
-    This function downloads an m3u8 file from the given URL, parses it to extract the URLs of the chunk files,
-    downloads the chunk files, and then uses ffmpeg to convert the chunk files to an mp4 file. If the output
-    file name is not provided, it generates a timestamped name. If the output directory is not provided, it
-    uses the 'output' directory. It creates the output directory if it does not exist.
+    This function downloads an m3u8 file from the given URL, parses it to extract the URLs of the
+    chunk files, downloads the chunk files, and then uses ffmpeg to convert the chunk files to a
+    mp4 file. If the output file name is not provided, it generates a timestamped name. If the
+    output directory is not provided, it uses the 'output' directory. It creates the output
+    directory if it does not exist.
 
     Args:
         m3u8_url (str): The URL of the m3u8 file.
-        output_file (str, optional): The name of the output mp4 file. If not provided, a timestamped name will be used. Defaults to None.
-        output_dir (str, optional): The directory where the output file will be saved. If not provided, the 'output' directory will be used. Defaults to None.
+        output_file (str, optional): The name of the output mp4 file. If not provided, a timestamped
+        name will be used. Defaults to None.
+        output_dir (str, optional): The directory where the output file will be saved. If not
+        provided, the 'output' directory will be used. Defaults to None.
 
     Returns:
         None
@@ -63,7 +66,7 @@ async def main(m3u8_url: str,
             f.write(f"file '{chunk_file}'\n")
 
     # Convert the chunk files to an mp4 file using ffmpeg
-    success = await convert_chunk_files_to_mp4(chunk_list_file, output=f'{output_dir}/{output_file}')
+    success = await convert_chunk_files_to_mp4(chunk_list_file, f'{output_dir}/{output_file}')
 
     # If the conversion was successful, delete the temporary files
     if success:
@@ -76,8 +79,9 @@ async def download_parse_m3u8(session: aiohttp.ClientSession, m3u8_url: str) -> 
     """
     Downloads and parses an m3u8 file from the given URL.
 
-    This function downloads an m3u8 file from the given URL, checks if it is a master m3u8 file, and if so,
-    downloads the child m3u8 file. It then parses the m3u8 file to extract the URLs of the chunk files.
+    This function downloads an m3u8 file from the given URL, checks if it is a master m3u8 file,
+    and if so, downloads the child m3u8 file. It then parses the m3u8 file to extract the URLs
+    of the chunk files.
 
     Args:
         session (aiohttp.ClientSession): The aiohttp client session to use for the request.
@@ -126,21 +130,21 @@ async def download_parse_m3u8(session: aiohttp.ClientSession, m3u8_url: str) -> 
 
 async def check_m3u8_master(m3u8_file: str) -> Tuple[bool, str]:
     """
-    Checks if the given m3u8 file is a master playlist and returns the URL of the first stream if it is.
+    Checks if the given m3u8 file is a master playlist.
 
-    This function opens the m3u8 file and reads it line by line. If it finds a line that starts with
-    '#EXT-X-STREAM-INF', it assumes that the file is a master playlist and that the next line will contain
-    the URL of the first stream. It then returns a tuple containing a boolean indicating that the file is
-    a master playlist and the URL of the first stream. If it does not find a line that starts with
-    '#EXT-X-STREAM-INF', it returns a tuple containing a boolean indicating that the file is not a master
-    playlist and an empty string.
+    This function opens the given m3u8 file and reads it line by line. If a line starts with
+    '#EXT-X-STREAM-INF', the file is a master playlist and the function returns True and the
+    URL of the first stream. If no line starts with '#EXT-X-STREAM-INF', the file is not a
+    master playlist and the function returns False and an empty string.
 
     Args:
         m3u8_file (str): The path to the m3u8 file.
 
     Returns:
-        Tuple[bool, str]: A tuple containing a boolean indicating whether the file is a master playlist
-                          and the URL of the first stream if it is, otherwise an empty string.
+        Tuple[bool, str]: A tuple where the first element is a boolean indicating whether the
+                          file is a master playlist and the second element is the URL of the
+                          first stream if the file is a master playlist, or an empty string
+                          otherwise.
     """
     # Open the m3u8 file and read it line by line
     with open(m3u8_file, 'r', encoding='utf-8') as f:
@@ -149,7 +153,8 @@ async def check_m3u8_master(m3u8_file: str) -> Tuple[bool, str]:
             # If the line starts with '#EXT-X-STREAM-INF', the file is a master playlist
             if line.startswith('#EXT-X-STREAM-INF'):
                 get_next_line = True
-            # If the previous line started with '#EXT-X-STREAM-INF', this line contains the URL of the first stream
+            # If the previous line started with '#EXT-X-STREAM-INF',
+            # this line contains URL of the first stream
             elif get_next_line:
                 return True, line.strip()
     # If no line started with '#EXT-X-STREAM-INF', the file is not a master playlist
@@ -188,9 +193,10 @@ async def download_file(session: aiohttp.ClientSession, url: str, file_path: str
     """
     Downloads a file from the given URL and saves it to the specified file path.
 
-    This function uses aiohttp to download a file asynchronously. It sends a GET request to the URL and
-    reads the response content in chunks of 1024 bytes, which it writes to the file at the specified path.
-    If the response status is not 200, it prints an error message and does not create or modify the file.
+    This function uses aiohttp to download a file asynchronously. It sends a GET request to the
+    URL and reads the response content in chunks of 1024 bytes, which it writes to the file at the
+    specified path. If the response status is not 200, it prints an error message and does not
+    create or modify the file.
 
     Args:
         session (aiohttp.ClientSession): The aiohttp client session to use for the request.
@@ -230,19 +236,23 @@ async def download_file(session: aiohttp.ClientSession, url: str, file_path: str
 
 async def download_files(session: aiohttp.ClientSession, urls: list[str], output_dir: str, prefix: str='', max_concurrent_tasks: int=10):
     """
-    Downloads multiple files concurrently from the given URLs and saves them to the specified directory.
+    Downloads multiple files concurrently from the given URLs and saves them to the specified
+    directory.
 
-    This function uses asyncio and aiohttp to download multiple files concurrently. It creates a semaphore
-    to limit the maximum number of concurrent download tasks. For each URL, it creates a task that downloads
-    the file from the URL and saves it to the output directory with a filename that includes a prefix and
-    the file number. It then waits for all tasks to complete.
+    This function uses asyncio and aiohttp to download multiple files concurrently. It creates
+    a semaphore to limit the maximum number of concurrent download tasks. For each URL, it
+    creates a task that downloads the file from the URL and saves it to the output directory
+    with a filename that includes a prefix and the file number. It then waits for all tasks to
+    complete.
 
     Args:
         session (aiohttp.ClientSession): The aiohttp client session to use for the request.
         urls (list[str]): A list of URLs pointing to the files to be downloaded.
         output_dir (str): The directory where the downloaded files will be saved.
-        prefix (str, optional): A prefix to be added to the filenames of the downloaded files. Defaults to an empty string.
-        max_concurrent_tasks (int, optional): The maximum number of concurrent download tasks. Defaults to 10.
+        prefix (str, optional): A prefix to be added to the filenames of the downloaded files.
+        Defaults to an empty string.
+        max_concurrent_tasks (int, optional): The maximum number of concurrent download tasks.
+        Defaults to 10.
 
     Returns:
         None
@@ -270,7 +280,8 @@ async def convert_chunk_files_to_mp4(file: str, output: str) -> bool:
     Converts a series of chunk files to a single .mp4 file using ffmpeg.
 
     Args:
-        file (str): The path to the input chunk file or a text file containing a list of chunk files.
+        file (str): The path to the input chunk file or a text file containing a list of chunk
+        files.
         output (str): The path to save the output .mp4 file.
 
     Returns:
