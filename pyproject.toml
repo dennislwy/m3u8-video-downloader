@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "m3u8-video-downloader"
+version = "1.0.0"
+description = "M3U8 video streams downloader with master playlist support, concurrent downloads, and interactive CLI"
+authors = ["Dennis Lee <wylee2000@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.11"
+aiohttp = "^3.9.5"
+asyncio = "^3.4.3"
+ffmpeg-python = "^0.2.0"
+argparse = "^1.4.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
