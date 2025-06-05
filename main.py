@@ -1,5 +1,6 @@
 from typing import Tuple
 import os
+import sys
 import time
 import dataclasses
 import argparse
@@ -7,6 +8,8 @@ import asyncio
 import ffmpeg
 import aiohttp
 from utils.progress import ProgressTracker
+from utils.download import download_file, download_files
+from utils.colors import printc, Colors
 from urllib.parse import urljoin
 
 @dataclasses.dataclass
@@ -78,9 +81,14 @@ async def main(m3u8_url: str,
 
         # Download the chunk files
         await download_files(session, 
-                             urls=chunk_urls, 
-                             output_dir=config.temp_dir, 
-                             prefix=epoch_ms)
+                        urls=chunk_urls, 
+                        output_dir=config.temp_dir, 
+                        prefix=epoch_ms,
+                        max_concurrent_tasks=config.max_concurrent,
+                        max_retries=config.max_retries,
+                        timeout_total=config.timeout_total,
+                        timeout_connect=config.timeout_connect,
+                        chunk_size=config.chunk_size)
 
     # Create a list of the chunk file names
     chunk_files = [f'{epoch_ms}-file{i+1}.ts' for i in range(len(chunk_urls))]
@@ -131,7 +139,11 @@ async def download_parse_m3u8(session: aiohttp.ClientSession, m3u8_url: str) -> 
     m3u8_file = os.path.join(config.temp_dir, get_filename_from_url(m3u8_url))
 
     # Download the m3u8 file with error handling
-    if not await download_file(session, m3u8_url, m3u8_file):
+    if not await download_file(session, m3u8_url, m3u8_file, 
+                              max_retries=config.max_retries,
+                              timeout_total=config.timeout_total,
+                              timeout_connect=config.timeout_connect,
+                              chunk_size=config.chunk_size):
         raise RuntimeError(f"Failed to download M3U8 file from {m3u8_url}")
 
     # Check if the m3u8 file is a master m3u8 file and get the best quality url stream
@@ -148,7 +160,12 @@ async def download_parse_m3u8(session: aiohttp.ClientSession, m3u8_url: str) -> 
             
         # download the child m3u8 file
         m3u8_file = os.path.join(config.temp_dir, get_filename_from_url(m3u8_url))
-        await download_file(session, m3u8_url, m3u8_file)
+        if not await download_file(session, m3u8_url, m3u8_file, 
+                                   max_retries=config.max_retries, 
+                                   timeout_total=config.timeout_total, 
+                                   timeout_connect=config.timeout_connect, 
+                                   chunk_size=config.chunk_size):
+            raise RuntimeError(f"Failed to download child M3U8 file from {m3u8_url}")
 
         # if best_stream_url contains sub-path, e.g. '1080p/video.m3u8'
         # extract path from best_stream_url and append to base_url, e.g: 'http://example.com/1080p'
@@ -313,124 +330,6 @@ def resolve_url(base_url: str, target_url: str) -> str:
     resolved_url = urljoin(base_url, target_url)
     
     return resolved_url
-        
-async def download_file(session: aiohttp.ClientSession, url: str, file_path: str, max_retries: int = 3) -> bool:
-    """
-    Downloads a file from the given URL with retry logic and exponential backoff.
-
-    This function asynchronously downloads a file from a URL using aiohttp with robust error 
-    handling. It implements retry logic with exponential backoff for handling temporary network 
-    issues, timeouts, and HTTP errors. The file is downloaded in chunks for memory efficiency
-    and saved to the specified local path.
-
-    Features:
-    - Retry logic with exponential backoff (2^attempt seconds)
-    - Timeout handling (30s total, 10s connect)
-    - Large chunk size (8192 bytes) for better performance
-    - Progress tracking capability (content-length based)
-    - Comprehensive error logging with attempt numbers
-
-    Args:
-        session (aiohttp.ClientSession): The aiohttp client session to use for the HTTP request.
-            Should be properly configured with appropriate headers and settings.
-        url (str): The URL of the file to download. Query parameters are stripped for filename
-            extraction but preserved for the actual download request.
-        file_path (str): The local file path where the downloaded file will be saved. 
-            Parent directories should exist or be created beforehand.
-        max_retries (int, optional): The maximum number of download attempts before giving up.
-            Defaults to 3. Each retry uses exponential backoff (2^attempt seconds).
-
-    Returns:
-        bool: True if the file was downloaded successfully within the retry limit, 
-              False if all attempts failed or if an unrecoverable error occurred.
-    """
-    for attempt in range(max_retries):
-        try:
-            filename = get_filename_from_url(url.split('?')[0])
-            
-            timeout = aiohttp.ClientTimeout(total=config.timeout_total, connect=config.timeout_connect)
-            async with session.get(url, timeout=timeout) as response:
-                # If the response status is 200, read the content and write it to the file
-                if response.status == 200:
-                    # Get content length for progress tracking
-                    # content_length = response.headers.get('Content-Length')
-                    # if content_length:
-                    #     total_size = int(content_length)
-                    #     downloaded = 0
-                    
-                    with open(file_path, 'wb') as f:
-                        async for chunk in response.content.iter_chunked(config.chunk_size):  # Larger chunks
-                            f.write(chunk)
-                            # if content_length:
-                            #     downloaded += len(chunk)
-                    
-                    printc(f"✓ Downloaded '{filename}'", Colors.GREEN)
-                    return True
-                else:
-                    printc(f"⚠ HTTP {response.status} for '{filename}' (attempt {attempt + 1})", Colors.YELLOW)
-                    
-        except asyncio.TimeoutError:
-            printc(f"⚠ Timeout downloading '{filename}' (attempt {attempt + 1})", Colors.YELLOW)
-        except Exception as e:
-            printc(f"✗ Error downloading '{filename}' (attempt {attempt + 1}): {e}", Colors.YELLOW)
-        
-        if attempt < max_retries - 1:
-            await asyncio.sleep(2 ** attempt)  # Exponential backoff
-    
-    printc(f"✗ Failed to download '{filename}' after {max_retries} attempts", Colors.RED)
-    return False
-
-async def download_files(session: aiohttp.ClientSession,
-                         urls: list[str],
-                         output_dir: str,
-                         prefix: str='',
-                         max_concurrent_tasks: int=config.max_concurrent) -> None:
-    """
-    Downloads multiple files concurrently from the given URLs and saves them to the specified
-    directory.
-
-    This function uses asyncio and aiohttp to download multiple files concurrently. It creates
-    a semaphore to limit the maximum number of concurrent download tasks. For each URL, it
-    creates a task that downloads the file from the URL and saves it to the output directory
-    with a filename that includes a prefix and the file number. It then waits for all tasks to
-    complete.
-
-    Args:
-        session (aiohttp.ClientSession): The aiohttp client session to use for the request.
-        urls (list[str]): A list of URLs pointing to the files to be downloaded.
-        output_dir (str): The directory where the downloaded files will be saved.
-        prefix (str, optional): A prefix to be added to the filenames of the downloaded files.
-        Defaults to an empty string.
-        max_concurrent_tasks (int, optional): The maximum number of concurrent download tasks.
-        Defaults to DEFAULT_MAX_CONCURRENT_TASKS.
-
-    Returns:
-        int: The number of files downloaded successfully.
-    """
-    # Create a semaphore with the maximum number of concurrent tasks
-    sem = asyncio.Semaphore(max_concurrent_tasks)
-    progress = ProgressTracker(len(urls))
-
-    async def bound_download_file(session, url, file_path):
-        async with sem:
-            success = await download_file(session, url, file_path)
-            progress.update(success)
-            return success
-
-    tasks = []
-
-    # For each URL, create a task that downloads the file and saves it to the output directory
-    for i, url in enumerate(urls):
-        file_path = os.path.join(output_dir, f'{prefix}-file{i+1}.ts')
-        task = asyncio.create_task(bound_download_file(session, url, file_path))
-        tasks.append(task)
-
-    # Wait for all tasks to complete    
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-    print()  # New line after progress
-    
-    success_count = sum(1 for result in results if result is True)
-    return success_count
 
 async def convert_chunk_files_to_mp4(file: str, output: str) -> bool:
     """
@@ -594,7 +493,7 @@ if __name__ == '__main__':
         else:
             display_filename = "auto-generated (timestamp-output.mp4)"
         
-        print(f"  📺 URL: {url}")
+        print(f"  📽️ URL: {url}")
         print(f"  📁 Output: {display_filename}")
         print(f"  📂 Directory: {display_dir}")
         print("=" * 62)

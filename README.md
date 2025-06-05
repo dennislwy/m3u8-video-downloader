@@ -199,12 +199,8 @@ export M3U8_TEMP_DIR="./custom_temp"
 The application provides detailed progress information:
 
 ```
-Base URL: https://example.com/stream/
-✓ Downloaded 'segment001.ts'
-✓ Downloaded 'segment002.ts'
-⚠ Timeout downloading 'segment003.ts' (attempt 1)
-✓ Downloaded 'segment003.ts'
-Progress: 45/100 (45.0%) | Failed: 2 | Rate: 3.2 files/s | ETA: 17s
+Base URL: https://example.com/stream
+Progress: 153/276 (55.4%) [█████████████░░░░░░░░░░░░] ✓ 153 ✗ 0 | 2.1 files/s | ETA: 57s | Downloading: jcrLWLei.ts  
 ```
 
 ### Progress Indicators
