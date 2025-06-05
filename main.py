@@ -1,6 +1,7 @@
 from typing import Tuple
 import os
 import time
+import dataclasses
 import argparse
 import asyncio
 import ffmpeg
@@ -8,16 +9,31 @@ import aiohttp
 from utils.progress import ProgressTracker
 from urllib.parse import urljoin
 
-# Directory to save downloaded chunk files
-# Can be overridden with M3U8_TEMP_DIR environment variable
-TEMP_DIR = os.getenv('M3U8_TEMP_DIR', 'temp')
+@dataclasses.dataclass
+class Config:
+    """Configuration settings for the downloader"""
+    # Directory to save downloaded chunk files
+    temp_dir: str = os.getenv('M3U8_TEMP_DIR', 'temp')
 
-# Default maximum number of concurrent download tasks
-# Can be overridden with M3U8_MAX_CONCURRENT environment variable
-DEFAULT_MAX_CONCURRENT_TASKS = os.getenv('M3U8_MAX_CONCURRENT', 6)
+    # Maximum number of concurrent download tasks
+    max_concurrent: int = int(os.getenv('M3U8_MAX_CONCURRENT', '6'))
+
+    # Maximum number of retries for downloading files
+    max_retries: int = int(os.getenv('M3U8_MAX_RETRIES', '3'))
+
+    # Chunk byte size for downloading files
+    chunk_size: int = int(os.getenv('M3U8_CHUNK_SIZE', '8192'))
+
+    # Timeout settings for aiohttp requests
+    timeout_total: int = int(os.getenv('M3U8_TIMEOUT_TOTAL', '30'))
+    # Timeout for establishing a connection 
+    timeout_connect: int = int(os.getenv('M3U8_TIMEOUT_CONNECT', '10'))
+
+# Create global config instance
+config = Config()
 
 # Create a temporary directory (if not exist)
-os.makedirs(TEMP_DIR, exist_ok=True)
+os.makedirs(config.temp_dir, exist_ok=True)
     
 async def main(m3u8_url: str,
                output_file: str | None = None,
@@ -63,14 +79,14 @@ async def main(m3u8_url: str,
         # Download the chunk files
         await download_files(session, 
                              urls=chunk_urls, 
-                             output_dir=TEMP_DIR, 
+                             output_dir=config.temp_dir, 
                              prefix=epoch_ms)
 
     # Create a list of the chunk file names
     chunk_files = [f'{epoch_ms}-file{i+1}.ts' for i in range(len(chunk_urls))]
 
     # Create a text file listing all the chunk files for ffmpeg
-    chunk_list_file = os.path.join(TEMP_DIR, f'{epoch_ms}-chunk_list.txt')
+    chunk_list_file = os.path.join(config.temp_dir, f'{epoch_ms}-chunk_list.txt')
 
     with open(chunk_list_file, 'w', encoding='utf-8') as f:
         for chunk_file in chunk_files:
@@ -84,7 +100,7 @@ async def main(m3u8_url: str,
         print("Deleting temp files")
         for chunk_file in chunk_files:
             try:
-                os.remove(os.path.join(TEMP_DIR, chunk_file))
+                os.remove(os.path.join(config.temp_dir, chunk_file))
             except OSError as e:
                 printc(f"Warning: Could not delete {chunk_file}: {e}", Colors.RED)
         try:
@@ -112,10 +128,11 @@ async def download_parse_m3u8(session: aiohttp.ClientSession, m3u8_url: str) -> 
     printc(f"Base URL: {base_url}", Colors.BLUE)
 
     # Define the path to the m3u8 file in the temporary directory
-    m3u8_file = os.path.join(TEMP_DIR, get_filename_from_url(m3u8_url))
+    m3u8_file = os.path.join(config.temp_dir, get_filename_from_url(m3u8_url))
 
-    # Download the m3u8 file
-    await download_file(session, m3u8_url, m3u8_file)
+    # Download the m3u8 file with error handling
+    if not await download_file(session, m3u8_url, m3u8_file):
+        raise RuntimeError(f"Failed to download M3U8 file from {m3u8_url}")
 
     # Check if the m3u8 file is a master m3u8 file and get the best quality url stream
     is_m3u8_master, best_stream_url = await check_parse_m3u8_master(m3u8_file)
@@ -130,7 +147,7 @@ async def download_parse_m3u8(session: aiohttp.ClientSession, m3u8_url: str) -> 
         printc(f"Resolved child m3u8 URL: {m3u8_url}", Colors.BLUE)
             
         # download the child m3u8 file
-        m3u8_file = os.path.join(TEMP_DIR, get_filename_from_url(m3u8_url))
+        m3u8_file = os.path.join(config.temp_dir, get_filename_from_url(m3u8_url))
         await download_file(session, m3u8_url, m3u8_file)
 
         # if best_stream_url contains sub-path, e.g. '1080p/video.m3u8'
@@ -327,14 +344,11 @@ async def download_file(session: aiohttp.ClientSession, url: str, file_path: str
         bool: True if the file was downloaded successfully within the retry limit, 
               False if all attempts failed or if an unrecoverable error occurred.
     """
-
-    CHUNK_SIZE = 8192
-
     for attempt in range(max_retries):
         try:
             filename = get_filename_from_url(url.split('?')[0])
             
-            timeout = aiohttp.ClientTimeout(total=30, connect=10)
+            timeout = aiohttp.ClientTimeout(total=config.timeout_total, connect=config.timeout_connect)
             async with session.get(url, timeout=timeout) as response:
                 # If the response status is 200, read the content and write it to the file
                 if response.status == 200:
@@ -345,7 +359,7 @@ async def download_file(session: aiohttp.ClientSession, url: str, file_path: str
                     #     downloaded = 0
                     
                     with open(file_path, 'wb') as f:
-                        async for chunk in response.content.iter_chunked(CHUNK_SIZE):  # Larger chunks
+                        async for chunk in response.content.iter_chunked(config.chunk_size):  # Larger chunks
                             f.write(chunk)
                             # if content_length:
                             #     downloaded += len(chunk)
@@ -370,7 +384,7 @@ async def download_files(session: aiohttp.ClientSession,
                          urls: list[str],
                          output_dir: str,
                          prefix: str='',
-                         max_concurrent_tasks: int=DEFAULT_MAX_CONCURRENT_TASKS) -> None:
+                         max_concurrent_tasks: int=config.max_concurrent) -> None:
     """
     Downloads multiple files concurrently from the given URLs and saves them to the specified
     directory.
@@ -519,7 +533,9 @@ if __name__ == '__main__':
                 printc("✗ URL must start with http:// or https://", Colors.RED)
                 exit(1)
                 
-            if not url.endswith('.m3u8'):
+            # Strip query parameters for validation
+            query_stripped_url = url.split('?')[0]  # Simple approach
+            if not query_stripped_url.endswith('.m3u8'):
                 printc("⚠ URL doesn't end with .m3u8, but continuing...", Colors.YELLOW)
             
             printc(f"✓ Using URL: {url}", Colors.GREEN)
