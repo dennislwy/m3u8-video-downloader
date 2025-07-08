@@ -170,7 +170,11 @@ async def download_parse_m3u8(session: aiohttp.ClientSession, m3u8_url: str) -> 
         # if best_stream_url contains sub-path, e.g. '1080p/video.m3u8'
         # extract path from best_stream_url and append to base_url, e.g: 'http://example.com/1080p'
         # Extract directory path from best_stream_url
-        stream_path = best_stream_url.rsplit('/', 1)[0] if '/' in best_stream_url else ''
+        try:
+            stream_path = best_stream_url.rsplit('/', 1)[0] if '/' in best_stream_url else ''
+        except Exception as e:
+            printc(f"Warning: Error extracting stream path: {e}", Colors.YELLOW)
+            stream_path = ''
     
         # If we found a path component, update the base_url
         if stream_path:
@@ -186,9 +190,16 @@ async def download_parse_m3u8(session: aiohttp.ClientSession, m3u8_url: str) -> 
             if line.startswith('#EXTINF'):
                 add_next_line = True
             elif line.startswith('#EXT-X-MAP:URI'): # #EXT-X-MAP:URI="720p.av1.mp4/init-v1-a1.mp4"
-                u = line.split('=')[1].strip().replace('"', "")
-                chunk_url = resolve_url(base_url, u)
-                chunk_urls.append(chunk_url)
+                try:
+                    parts = line.split('=')
+                    if len(parts) > 1:
+                        u = parts[1].strip().replace('"', "")
+                        chunk_url = resolve_url(base_url, u)
+                        chunk_urls.append(chunk_url)
+                    else:
+                        printc(f"Warning: Malformed EXT-X-MAP line: {line.strip()}", Colors.YELLOW)
+                except Exception as e:
+                    printc(f"Warning: Error parsing EXT-X-MAP line: {line.strip()}", Colors.YELLOW)
             elif add_next_line:
                 chunk_url = resolve_url(base_url, line.strip())
                 chunk_urls.append(chunk_url)
@@ -233,13 +244,38 @@ async def check_parse_m3u8_master(m3u8_file: str) -> Tuple[bool, str]:
         get_next_line = False
         child_streams = {}
         bandwidth = 0
+        resolution = "unknown"
         for line in f:
             # If the line starts with '#EXT-X-STREAM-INF', the file is a master playlist
             if line.startswith('#EXT-X-STREAM-INF'):
-                # extract the bandwidth
-                bandwidth = int(line.split('BANDWIDTH=')[1].split(',')[0])
-                resolution = line.split('RESOLUTION=')[1].split(',')[0]
-                get_next_line = True
+                try:
+                    # extract the bandwidth
+                    if 'BANDWIDTH=' in line:
+                        bandwidth_parts = line.split('BANDWIDTH=')
+                        if len(bandwidth_parts) > 1:
+                            bandwidth_str = bandwidth_parts[1].split(',')[0]
+                            bandwidth = int(bandwidth_str)
+                        else:
+                            bandwidth = 0
+                    else:
+                        bandwidth = 0
+                    
+                    # extract the resolution
+                    if 'RESOLUTION=' in line:
+                        resolution_parts = line.split('RESOLUTION=')
+                        if len(resolution_parts) > 1:
+                            resolution = resolution_parts[1].split(',')[0]
+                        else:
+                            resolution = "unknown"
+                    else:
+                        resolution = "unknown"
+                    
+                    get_next_line = True
+                except (ValueError, IndexError) as e:
+                    printc(f"Warning: Could not parse stream info line: {line.strip()}", Colors.YELLOW)
+                    bandwidth = 0
+                    resolution = "unknown"
+                    get_next_line = True
             # If the previous line started with '#EXT-X-STREAM-INF',
             # this line contains URL of the stream
             elif get_next_line:
@@ -247,6 +283,7 @@ async def check_parse_m3u8_master(m3u8_file: str) -> Tuple[bool, str]:
                 print(f"Found stream '{url}' with bandwidth {bandwidth}, resolution {resolution}")
                 child_streams[bandwidth] = url
                 bandwidth = 0
+                resolution = "unknown"
                 get_next_line = False
 
         # If no line started with '#EXT-X-STREAM-INF', the file is not a master playlist
@@ -259,10 +296,13 @@ async def check_parse_m3u8_master(m3u8_file: str) -> Tuple[bool, str]:
         sorted_child = dict(sorted(child_streams.items(), reverse=True))
         
         # Get the first item in the sorted dictionary, which is the highest bandwidth stream
-        best_child = next(iter(sorted_child.items()))
-
-        printc(f"Best stream is '{best_child[1]}' with bandwidth {best_child[0]}\r\n", Colors.BLUE)
-        return True, best_child[1]
+        if sorted_child:
+            best_child = next(iter(sorted_child.items()))
+            printc(f"Best stream is '{best_child[1]}' with bandwidth {best_child[0]}\r\n", Colors.BLUE)
+            return True, best_child[1]
+        else:
+            printc("No valid streams found in master playlist", Colors.YELLOW)
+            return False, ''
 
 def get_filename_from_url(url: str) -> str:
     """
