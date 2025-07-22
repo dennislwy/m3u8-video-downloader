@@ -237,7 +237,7 @@ async def check_parse_m3u8_master(m3u8_file: str) -> Tuple[bool, str]:
             # If the line starts with '#EXT-X-STREAM-INF', the file is a master playlist
             if line.startswith('#EXT-X-STREAM-INF'):
                 # extract the bandwidth
-                bandwidth = int(line.split('BANDWIDTH=')[1].split(',')[0]).strip()
+                bandwidth = int(line.split('BANDWIDTH=')[1].split(',')[0])
                 resolution = line.split('RESOLUTION=')[1].split(',')[0].strip()
                 get_next_line = True
             # If the previous line started with '#EXT-X-STREAM-INF',
