@@ -132,8 +132,8 @@ async def download_parse_m3u8(session: aiohttp.ClientSession, m3u8_url: str) -> 
         list[str]: A list of URLs for the chunk files extracted from the m3u8 file.
     """
     # Get the base URL from the m3u8 URL
-    base_url = get_base_url(m3u8_url)
-    printc(f"Base URL: {base_url}", Colors.BLUE)
+    base_url = get_base_url(m3u8_url) # e.g: 'https://www.example.com/path/to'
+    printc(f"Base URL: '{base_url}'", Colors.BLUE)
 
     # Define the path to the m3u8 file in the temporary directory
     m3u8_file = os.path.join(config.temp_dir, get_filename_from_url(m3u8_url))
@@ -156,7 +156,7 @@ async def download_parse_m3u8(session: aiohttp.ClientSession, m3u8_url: str) -> 
 
         # Resolve the best stream URL against the base URL
         m3u8_url = resolve_url(base_url, best_stream_url)
-        printc(f"Resolved child m3u8 URL: {m3u8_url}", Colors.BLUE)
+        printc(f"Resolved child m3u8 URL: '{m3u8_url}'", Colors.BLUE)
             
         # download the child m3u8 file
         m3u8_file = os.path.join(config.temp_dir, get_filename_from_url(m3u8_url))
@@ -175,7 +175,7 @@ async def download_parse_m3u8(session: aiohttp.ClientSession, m3u8_url: str) -> 
         # If we found a path component, update the base_url
         if stream_path:
             base_url = f"{base_url}/{stream_path}"
-            printc(f"Updated base URL: {base_url}", Colors.BLUE)
+            printc(f"Updated base URL: '{base_url}'", Colors.BLUE)
 
     chunk_urls = []
 
@@ -237,8 +237,8 @@ async def check_parse_m3u8_master(m3u8_file: str) -> Tuple[bool, str]:
             # If the line starts with '#EXT-X-STREAM-INF', the file is a master playlist
             if line.startswith('#EXT-X-STREAM-INF'):
                 # extract the bandwidth
-                bandwidth = int(line.split('BANDWIDTH=')[1].split(',')[0])
-                resolution = line.split('RESOLUTION=')[1].split(',')[0]
+                bandwidth = int(line.split('BANDWIDTH=')[1].split(',')[0]).strip()
+                resolution = line.split('RESOLUTION=')[1].split(',')[0].strip()
                 get_next_line = True
             # If the previous line started with '#EXT-X-STREAM-INF',
             # this line contains URL of the stream
@@ -324,7 +324,11 @@ def resolve_url(base_url: str, target_url: str) -> str:
     if target_url.startswith('http://') or target_url.startswith('https://'):
         # If the target URL is absolute, return it as is
         return target_url
-    
+
+    # add trailing slash to base_url if not present
+    if not base_url.endswith('/'):
+        base_url += '/'
+
     # Use urllib.parse.urljoin for proper URL resolution
     # This handles relative paths, absolute paths, and complex relative URLs correctly
     resolved_url = urljoin(base_url, target_url)
@@ -402,9 +406,13 @@ if __name__ == '__main__':
     # Add the path argument. This argument is optional.
     parser.add_argument('-p', '--path', type=str, required=False, help='The output directory')
 
+    # Add the debug argument. This argument is optional.
+    parser.add_argument('-d', '--debug', action='store_true', help='Enable debug mode')
+
     # Parse the arguments
     args = parser.parse_args()    # Check if we need to run in interactive mode
     interactive_mode = args.url is None or args.output is None
+    debug = args.debug == True
     
     if interactive_mode and args.url is None:
         # Display interactive header
@@ -437,7 +445,7 @@ if __name__ == '__main__':
             if not query_stripped_url.endswith('.m3u8'):
                 printc("⚠ URL doesn't end with .m3u8, but continuing...", Colors.YELLOW)
             
-            printc(f"✓ Using URL: {url}", Colors.GREEN)
+            printc(f"✓ Using URL: '{url}'", Colors.GREEN)
             
         except KeyboardInterrupt:
             printc("\n⚠ Operation cancelled by user", Colors.YELLOW)
@@ -493,9 +501,9 @@ if __name__ == '__main__':
         else:
             display_filename = "auto-generated (timestamp-output.mp4)"
         
-        print(f"  📽️ URL: {url}")
-        print(f"  📁 Output: {display_filename}")
-        print(f"  📂 Directory: {display_dir}")
+        print(f"  📽️  URL: '{url}'")
+        print(f"  📁 Output: '{display_filename}'")
+        print(f"  📂 Directory: '{display_dir}'")
         print("=" * 62)
         print()
         
