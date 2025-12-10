@@ -3,11 +3,14 @@ import asyncio
 import dataclasses
 import os
 import time
+from functools import lru_cache
 from typing import Tuple
 from urllib.parse import urljoin
 
+import aiofiles
 import aiohttp
-import ffmpeg  # type: ignore[import-untyped]
+import ffmpeg
+import m3u8
 
 from utils.colors import Colors, printc
 from utils.download import download_file, download_files
@@ -78,8 +81,16 @@ async def main(
     # Create the output directory if it does not exist
     os.makedirs(output_dir, exist_ok=True)
 
-    # Create a session
-    async with aiohttp.ClientSession() as session:
+    # Configure optimized TCP connector for better performance
+    connector = aiohttp.TCPConnector(
+        limit=100,  # Total connection pool size
+        limit_per_host=30,  # Per-host connection limit
+        ttl_dns_cache=300,  # DNS cache TTL in seconds (5 minutes)
+        enable_cleanup_closed=True,  # Clean up closed connections
+    )
+
+    # Create a session with optimized connector
+    async with aiohttp.ClientSession(connector=connector) as session:
         # Download the m3u8 file and parse it to extract the URLs of the chunk files
         chunk_urls = await download_parse_m3u8(session, m3u8_url)
 
@@ -102,9 +113,9 @@ async def main(
     # Create a text file listing all the chunk files for ffmpeg
     chunk_list_file = os.path.join(config.temp_dir, f"{epoch_ms}-chunk_list.txt")
 
-    with open(chunk_list_file, "w", encoding="utf-8") as f:
-        for chunk_file in chunk_files:
-            f.write(f"file '{chunk_file}'\n")
+    # Use async file I/O for better performance
+    async with aiofiles.open(chunk_list_file, "w", encoding="utf-8") as f:
+        await f.writelines(f"file '{chunk_file}'\n" for chunk_file in chunk_files)
 
     # Convert the chunk files to an mp4 file using ffmpeg
     success = await convert_chunk_files_to_mp4(
@@ -114,15 +125,22 @@ async def main(
     # If the conversion was successful, delete the temporary files
     if success:
         print("Deleting temp files")
-        for chunk_file in chunk_files:
+
+        async def cleanup_file(filepath: str, filename: str) -> None:
+            """Delete a file asynchronously."""
             try:
-                os.remove(os.path.join(config.temp_dir, chunk_file))
+                await asyncio.to_thread(os.remove, filepath)
             except OSError as e:
-                printc(f"Warning: Could not delete {chunk_file}: {e}", Colors.RED)
-        try:
-            os.remove(chunk_list_file)
-        except OSError as e:
-            printc(f"Warning: Could not delete {chunk_list_file}: {e}", Colors.RED)
+                printc(f"Warning: Could not delete {filename}: {e}", Colors.RED)
+
+        # Cleanup all files in parallel for better performance
+        cleanup_tasks = [
+            cleanup_file(os.path.join(config.temp_dir, chunk_file), chunk_file)
+            for chunk_file in chunk_files
+        ]
+        cleanup_tasks.append(cleanup_file(chunk_list_file, chunk_list_file))
+
+        await asyncio.gather(*cleanup_tasks, return_exceptions=True)
 
 
 async def download_parse_m3u8(
@@ -198,24 +216,24 @@ async def download_parse_m3u8(
             base_url = f"{base_url}/{stream_path}"
             printc(f"Updated base URL: '{base_url}'", Colors.BLUE)
 
+    # Parse the m3u8 file using the m3u8 library for robust parsing
+    playlist = m3u8.load(m3u8_file)
     chunk_urls = []
 
-    # Parse the m3u8 file to extract the URLs of the chunk files
-    with open(m3u8_file, "r", encoding="utf-8") as f:
-        add_next_line = False
-        for line in f:
-            if line.startswith("#EXTINF"):
-                add_next_line = True
-            elif line.startswith(
-                "#EXT-X-MAP:URI"
-            ):  # #EXT-X-MAP:URI="720p.av1.mp4/init-v1-a1.mp4"
-                u = line.split("=")[1].strip().replace('"', "")
-                chunk_url = resolve_url(base_url, u)
-                chunk_urls.append(chunk_url)
-            elif add_next_line:
-                chunk_url = resolve_url(base_url, line.strip())
-                chunk_urls.append(chunk_url)
-                add_next_line = False
+    # Add segment map (initialization segment) if present
+    # Common in fragmented MP4 (fMP4) streams
+    if playlist.segment_map and len(playlist.segment_map) > 0:
+        init_uri = playlist.segment_map[0].uri
+        chunk_url = resolve_url(base_url, init_uri)
+        chunk_urls.append(chunk_url)
+        printc(f"Found initialization segment: {init_uri}", Colors.BLUE)
+
+    # Extract all segment URLs from the playlist
+    for segment in playlist.segments:
+        chunk_url = resolve_url(base_url, segment.uri)
+        chunk_urls.append(chunk_url)
+
+    printc(f"Extracted {len(chunk_urls)} chunk URLs from playlist", Colors.GREEN)
 
     # Remove the m3u8 file
     os.remove(m3u8_file)
@@ -325,9 +343,13 @@ def get_base_url(url: str) -> str:
     return "/".join(url.split("/")[:-1])
 
 
+@lru_cache(maxsize=1024)
 def resolve_url(base_url: str, target_url: str) -> str:
     """
     Resolves a target URL against a base URL, handling both relative and absolute URLs properly.
+
+    Uses LRU cache to avoid redundant URL resolution for repeated base_url/target_url pairs,
+    improving performance for playlists with hundreds of chunks.
 
     Args:
         base_url (str): The base URL to resolve against

@@ -1,8 +1,11 @@
+import asyncio
 import os
 import sys
-import asyncio
-import aiohttp
 from typing import Optional
+
+import aiofiles
+import aiohttp
+
 from utils.progress import ProgressTracker
 
 
@@ -108,7 +111,7 @@ async def download_files(
         No exceptions are raised directly, but individual download failures are
         handled gracefully and reported in the final summary.
     """
-    from utils.colors import printc, Colors  # Import here to avoid circular imports
+    from utils.colors import Colors, printc  # Import here to avoid circular imports
 
     # Create semaphore to limit concurrent downloads and prevent overwhelming the server
     sem = asyncio.Semaphore(max_concurrent_tasks)
@@ -186,7 +189,7 @@ async def _attempt_download(
     timeout_connect: int,
     chunk_size: int,
 ) -> int:
-    """Attempts a single download operation.
+    """Attempts a single download operation with async file I/O.
 
     Args:
         session: The aiohttp client session
@@ -205,11 +208,15 @@ async def _attempt_download(
     """
     timeout = aiohttp.ClientTimeout(total=timeout_total, connect=timeout_connect)
 
-    async with session.get(url, timeout=timeout) as response:
+    async with session.get(
+        url,
+        timeout=timeout,
+        headers={"Accept-Encoding": "gzip, deflate, br"},  # Enable compression
+    ) as response:
         if response.status == 200:
-            with open(file_path, "wb") as f:
+            async with aiofiles.open(file_path, "wb") as f:
                 async for chunk in response.content.iter_chunked(chunk_size):
-                    f.write(chunk)
+                    await f.write(chunk)
 
         return response.status
 
