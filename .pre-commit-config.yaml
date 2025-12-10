@@ -24,6 +24,7 @@ repos:
         additional_dependencies:
         -   types-requests
         -   types-aiofiles
+        -   types-m3u8
 
 #   # Security Audit for Dependencies (pip-audit)
 # -   repo: https://github.com/pypa/pip-audit

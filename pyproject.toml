@@ -25,6 +25,8 @@ dev = [
     "pre-commit>=4.5.0",
     "pre-commit-update>=0.9.0",
     "ruff>=0.14.8",
+    "types-aiofiles>=25.1.0.20251011",
+    "types-m3u8>=6.0.0.20250708",
 ]
 
 [tool.bandit]

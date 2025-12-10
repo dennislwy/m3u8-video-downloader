@@ -9,7 +9,7 @@ from urllib.parse import urljoin
 
 import aiofiles
 import aiohttp
-import ffmpeg
+import ffmpeg  # type: ignore
 import m3u8
 
 from utils.colors import Colors, printc

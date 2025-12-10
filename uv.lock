@@ -510,6 +510,8 @@ dev = [
     { name = "pre-commit" },
     { name = "pre-commit-update" },
     { name = "ruff" },
+    { name = "types-aiofiles" },
+    { name = "types-m3u8" },
 ]
 
 [package.metadata]
@@ -530,6 +532,8 @@ dev = [
     { name = "pre-commit", specifier = ">=4.5.0" },
     { name = "pre-commit-update", specifier = ">=0.9.0" },
     { name = "ruff", specifier = ">=0.14.8" },
+    { name = "types-aiofiles", specifier = ">=25.1.0.20251011" },
+    { name = "types-m3u8", specifier = ">=6.0.0.20250708" },
 ]
 
 [[package]]
@@ -1133,6 +1137,24 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/19/75/241269d1da26b624c0d5e110e8149093c759b7a286138f4efd61a60e75fe/tomli_w-1.2.0.tar.gz", hash = "sha256:2dd14fac5a47c27be9cd4c976af5a12d87fb1f0b4512f81d69cce3b35ae25021", size = 7184, upload-time = "2025-01-15T12:07:24.262Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c7/18/c86eb8e0202e32dd3df50d43d7ff9854f8e0603945ff398974c1d91ac1ef/tomli_w-1.2.0-py3-none-any.whl", hash = "sha256:188306098d013b691fcadc011abd66727d3c414c571bb01b1a174ba8c983cf90", size = 6675, upload-time = "2025-01-15T12:07:22.074Z" },
+]
+
+[[package]]
+name = "types-aiofiles"
+version = "25.1.0.20251011"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/84/6c/6d23908a8217e36704aa9c79d99a620f2fdd388b66a4b7f72fbc6b6ff6c6/types_aiofiles-25.1.0.20251011.tar.gz", hash = "sha256:1c2b8ab260cb3cd40c15f9d10efdc05a6e1e6b02899304d80dfa0410e028d3ff", size = 14535, upload-time = "2025-10-11T02:44:51.237Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/71/0f/76917bab27e270bb6c32addd5968d69e558e5b6f7fb4ac4cbfa282996a96/types_aiofiles-25.1.0.20251011-py3-none-any.whl", hash = "sha256:8ff8de7f9d42739d8f0dadcceeb781ce27cd8d8c4152d4a7c52f6b20edb8149c", size = 14338, upload-time = "2025-10-11T02:44:50.054Z" },
+]
+
+[[package]]
+name = "types-m3u8"
+version = "6.0.0.20250708"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/32/0a/b5f8f8c4c8f9dd8cce273fc3d189f3e673892c2da08f3faee9f98903ec96/types_m3u8-6.0.0.20250708.tar.gz", hash = "sha256:ff1df5a5dc2f7a160be2117ff5a4ef5d6baf60f4043584e745728389882055bf", size = 12321, upload-time = "2025-07-08T03:14:16.298Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/86/dd/ae162baaf9bd10d0ab1f0fe5e9b49eab787cf33825f64d8047201b6fcfdb/types_m3u8-6.0.0.20250708-py3-none-any.whl", hash = "sha256:709748552145075ce1071d36179c5ffbd489a2649563519c3614d58fee112b40", size = 13674, upload-time = "2025-07-08T03:14:15.605Z" },
 ]
 
 [[package]]
