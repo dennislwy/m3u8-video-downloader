@@ -1,0 +1,32 @@
+repos:
+  # Pre-commit Update Tool
+  - repo: https://gitlab.com/vojko.pribudic.foss/pre-commit-update
+    rev: v0.9.0  # Insert the latest tag here
+    hooks:
+    -   id: pre-commit-update
+
+  # General Sanity Checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+    -   id: check-docstring-first
+    -   id: trailing-whitespace
+    -   id: end-of-file-fixer
+    -   id: check-yaml
+    -   id: check-toml
+    -   id: check-added-large-files
+        args: [--maxkb=1000]
+    -   id: check-merge-conflict
+    -   id: check-case-conflict
+    -   id: detect-private-key
+
+
+  # uv.lock validation
+  - repo: local
+    hooks:
+    -   id: uv-lock-check
+        name: Check uv.lock is up to date
+        entry: uv lock --locked
+        language: system
+        files: ^(pyproject\.toml|uv\.lock)$
+        pass_filenames: false

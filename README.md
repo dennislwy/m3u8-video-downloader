@@ -71,9 +71,8 @@ ffmpeg -version
 git clone https://github.com/dennislwy/m3u8-video-downloader.git
 cd m3u8-video-downloader
 
-# Option 1: Using Poetry (recommended)
-poetry install
-poetry shell
+# Option 1: Using uv (recommended)
+uv sync
 
 # Option 2: Using pip
 pip install -r requirements.txt
@@ -199,7 +198,7 @@ The application provides detailed progress information:
 
 ```
 Base URL: https://example.com/stream
-Progress: 153/276 (55.4%) [█████████████░░░░░░░░░░░░] ✓ 153 ✗ 0 | 2.1 files/s | ETA: 57s | Downloading: jcrLWLei.ts  
+Progress: 153/276 (55.4%) [█████████████░░░░░░░░░░░░] ✓ 153 ✗ 0 | 2.1 files/s | ETA: 57s | Downloading: jcrLWLei.ts
 ```
 
 ### Progress Indicators
