@@ -20,7 +20,7 @@ class ProgressTracker:
         self.completed = 0  # Counter for successful downloads
         self.failed = 0  # Counter for failed downloads
         self.start_time = time.time()
-        self.last_update = 0  # Timestamp of last display update
+        self.last_update = 0.0  # Timestamp of last display update
         self.current_file = ""  # Currently downloading file name
         self.lock = threading.Lock()  # Thread synchronization lock
 
@@ -86,7 +86,9 @@ class ProgressTracker:
         bar = "█" * filled + "░" * (bar_width - filled)
 
         # Add current file info if available
-        current_info = f" | Downloading: {self.current_file}" if self.current_file else ""
+        current_info = (
+            f" | Downloading: {self.current_file}" if self.current_file else ""
+        )
 
         # Build the complete progress line
         progress_line = (
@@ -128,7 +130,7 @@ class ProgressTracker:
         if seconds < 60:
             return f"{seconds}s"
         elif seconds < 3600:  # Less than 1 hour
-            return f"{seconds//60}m {seconds%60}s"
+            return f"{seconds // 60}m {seconds % 60}s"
         else:  # 1 hour or more
             hours = seconds // 3600
             minutes = (seconds % 3600) // 60

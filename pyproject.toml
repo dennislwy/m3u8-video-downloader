@@ -24,3 +24,17 @@ dev = [
     "pre-commit-update>=0.9.0",
     "ruff>=0.14.8",
 ]
+
+[tool.bandit]
+# Bandit security linter configuration
+exclude_dirs = [
+    "tests",
+    ".venv",
+    "venv",
+    "temp",
+    "output"
+]
+skips = [
+    # Add specific test IDs to skip if needed
+    # Example: "B101",  # assert_used
+]

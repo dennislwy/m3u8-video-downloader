@@ -1,46 +1,50 @@
-from typing import Tuple
-import os
-import sys
-import time
-import dataclasses
 import argparse
 import asyncio
-import ffmpeg
-import aiohttp
-from utils.progress import ProgressTracker
-from utils.download import download_file, download_files
-from utils.colors import printc, Colors
+import dataclasses
+import os
+import time
+from typing import Tuple
 from urllib.parse import urljoin
+
+import aiohttp
+import ffmpeg  # type: ignore[import-untyped]
+
+from utils.colors import Colors, printc
+from utils.download import download_file, download_files
+
 
 @dataclasses.dataclass
 class Config:
     """Configuration settings for the downloader"""
+
     # Directory to save downloaded chunk files
-    temp_dir: str = os.getenv('M3U8_TEMP_DIR', 'temp')
+    temp_dir: str = os.getenv("M3U8_TEMP_DIR", "temp")
 
     # Maximum number of concurrent download tasks
-    max_concurrent: int = int(os.getenv('M3U8_MAX_CONCURRENT', '6'))
+    max_concurrent: int = int(os.getenv("M3U8_MAX_CONCURRENT", "6"))
 
     # Maximum number of retries for downloading files
-    max_retries: int = int(os.getenv('M3U8_MAX_RETRIES', '3'))
+    max_retries: int = int(os.getenv("M3U8_MAX_RETRIES", "3"))
 
     # Chunk byte size for downloading files
-    chunk_size: int = int(os.getenv('M3U8_CHUNK_SIZE', '8192'))
+    chunk_size: int = int(os.getenv("M3U8_CHUNK_SIZE", "8192"))
 
     # Timeout settings for aiohttp requests
-    timeout_total: int = int(os.getenv('M3U8_TIMEOUT_TOTAL', '30'))
-    # Timeout for establishing a connection 
-    timeout_connect: int = int(os.getenv('M3U8_TIMEOUT_CONNECT', '10'))
+    timeout_total: int = int(os.getenv("M3U8_TIMEOUT_TOTAL", "30"))
+    # Timeout for establishing a connection
+    timeout_connect: int = int(os.getenv("M3U8_TIMEOUT_CONNECT", "10"))
+
 
 # Create global config instance
 config = Config()
 
 # Create a temporary directory (if not exist)
 os.makedirs(config.temp_dir, exist_ok=True)
-    
-async def main(m3u8_url: str,
-               output_file: str | None = None,
-               output_dir: str | None = None) -> None:
+
+
+async def main(
+    m3u8_url: str, output_file: str | None = None, output_dir: str | None = None
+) -> None:
     """
     Downloads and converts a video from an m3u8 URL to an mp4 file.
 
@@ -61,12 +65,12 @@ async def main(m3u8_url: str,
         None
     """
     # Generate a timestamp for the output file if not provided
-    epoch_ms = str(int(time.time()*1000))
+    epoch_ms = str(int(time.time() * 1000))
 
     # If output_file is not provided, use a timestamped name
     output_file = f"{epoch_ms}-output.mp4" if output_file is None else output_file
     # Ensure the output file has the .mp4 extension
-    if not output_file.endswith('.mp4'):
+    if not output_file.endswith(".mp4"):
         output_file = f"{output_file}.mp4"
 
     # If output_dir is not provided, use the 'output' directory
@@ -80,28 +84,32 @@ async def main(m3u8_url: str,
         chunk_urls = await download_parse_m3u8(session, m3u8_url)
 
         # Download the chunk files
-        await download_files(session, 
-                        urls=chunk_urls, 
-                        output_dir=config.temp_dir, 
-                        prefix=epoch_ms,
-                        max_concurrent_tasks=config.max_concurrent,
-                        max_retries=config.max_retries,
-                        timeout_total=config.timeout_total,
-                        timeout_connect=config.timeout_connect,
-                        chunk_size=config.chunk_size)
+        await download_files(
+            session,
+            urls=chunk_urls,
+            output_dir=config.temp_dir,
+            prefix=epoch_ms,
+            max_concurrent_tasks=config.max_concurrent,
+            max_retries=config.max_retries,
+            timeout_total=config.timeout_total,
+            timeout_connect=config.timeout_connect,
+            chunk_size=config.chunk_size,
+        )
 
     # Create a list of the chunk file names
-    chunk_files = [f'{epoch_ms}-file{i+1}.ts' for i in range(len(chunk_urls))]
+    chunk_files = [f"{epoch_ms}-file{i + 1}.ts" for i in range(len(chunk_urls))]
 
     # Create a text file listing all the chunk files for ffmpeg
-    chunk_list_file = os.path.join(config.temp_dir, f'{epoch_ms}-chunk_list.txt')
+    chunk_list_file = os.path.join(config.temp_dir, f"{epoch_ms}-chunk_list.txt")
 
-    with open(chunk_list_file, 'w', encoding='utf-8') as f:
+    with open(chunk_list_file, "w", encoding="utf-8") as f:
         for chunk_file in chunk_files:
             f.write(f"file '{chunk_file}'\n")
 
     # Convert the chunk files to an mp4 file using ffmpeg
-    success = await convert_chunk_files_to_mp4(chunk_list_file, os.path.join(output_dir, output_file))
+    success = await convert_chunk_files_to_mp4(
+        chunk_list_file, os.path.join(output_dir, output_file)
+    )
 
     # If the conversion was successful, delete the temporary files
     if success:
@@ -116,7 +124,10 @@ async def main(m3u8_url: str,
         except OSError as e:
             printc(f"Warning: Could not delete {chunk_list_file}: {e}", Colors.RED)
 
-async def download_parse_m3u8(session: aiohttp.ClientSession, m3u8_url: str) -> list[str]:
+
+async def download_parse_m3u8(
+    session: aiohttp.ClientSession, m3u8_url: str
+) -> list[str]:
     """
     Downloads and parses an m3u8 file from the given URL.
 
@@ -132,18 +143,22 @@ async def download_parse_m3u8(session: aiohttp.ClientSession, m3u8_url: str) -> 
         list[str]: A list of URLs for the chunk files extracted from the m3u8 file.
     """
     # Get the base URL from the m3u8 URL
-    base_url = get_base_url(m3u8_url) # e.g: 'https://www.example.com/path/to'
+    base_url = get_base_url(m3u8_url)  # e.g: 'https://www.example.com/path/to'
     printc(f"Base URL: '{base_url}'", Colors.BLUE)
 
     # Define the path to the m3u8 file in the temporary directory
     m3u8_file = os.path.join(config.temp_dir, get_filename_from_url(m3u8_url))
 
     # Download the m3u8 file with error handling
-    if not await download_file(session, m3u8_url, m3u8_file, 
-                              max_retries=config.max_retries,
-                              timeout_total=config.timeout_total,
-                              timeout_connect=config.timeout_connect,
-                              chunk_size=config.chunk_size):
+    if not await download_file(
+        session,
+        m3u8_url,
+        m3u8_file,
+        max_retries=config.max_retries,
+        timeout_total=config.timeout_total,
+        timeout_connect=config.timeout_connect,
+        chunk_size=config.chunk_size,
+    ):
         raise RuntimeError(f"Failed to download M3U8 file from {m3u8_url}")
 
     # Check if the m3u8 file is a master m3u8 file and get the best quality url stream
@@ -157,21 +172,27 @@ async def download_parse_m3u8(session: aiohttp.ClientSession, m3u8_url: str) -> 
         # Resolve the best stream URL against the base URL
         m3u8_url = resolve_url(base_url, best_stream_url)
         printc(f"Resolved child m3u8 URL: '{m3u8_url}'", Colors.BLUE)
-            
+
         # download the child m3u8 file
         m3u8_file = os.path.join(config.temp_dir, get_filename_from_url(m3u8_url))
-        if not await download_file(session, m3u8_url, m3u8_file, 
-                                   max_retries=config.max_retries, 
-                                   timeout_total=config.timeout_total, 
-                                   timeout_connect=config.timeout_connect, 
-                                   chunk_size=config.chunk_size):
+        if not await download_file(
+            session,
+            m3u8_url,
+            m3u8_file,
+            max_retries=config.max_retries,
+            timeout_total=config.timeout_total,
+            timeout_connect=config.timeout_connect,
+            chunk_size=config.chunk_size,
+        ):
             raise RuntimeError(f"Failed to download child M3U8 file from {m3u8_url}")
 
         # if best_stream_url contains sub-path, e.g. '1080p/video.m3u8'
         # extract path from best_stream_url and append to base_url, e.g: 'http://example.com/1080p'
         # Extract directory path from best_stream_url
-        stream_path = best_stream_url.rsplit('/', 1)[0] if '/' in best_stream_url else ''
-    
+        stream_path = (
+            best_stream_url.rsplit("/", 1)[0] if "/" in best_stream_url else ""
+        )
+
         # If we found a path component, update the base_url
         if stream_path:
             base_url = f"{base_url}/{stream_path}"
@@ -180,13 +201,15 @@ async def download_parse_m3u8(session: aiohttp.ClientSession, m3u8_url: str) -> 
     chunk_urls = []
 
     # Parse the m3u8 file to extract the URLs of the chunk files
-    with open(m3u8_file, 'r', encoding='utf-8') as f:
+    with open(m3u8_file, "r", encoding="utf-8") as f:
         add_next_line = False
         for line in f:
-            if line.startswith('#EXTINF'):
+            if line.startswith("#EXTINF"):
                 add_next_line = True
-            elif line.startswith('#EXT-X-MAP:URI'): # #EXT-X-MAP:URI="720p.av1.mp4/init-v1-a1.mp4"
-                u = line.split('=')[1].strip().replace('"', "")
+            elif line.startswith(
+                "#EXT-X-MAP:URI"
+            ):  # #EXT-X-MAP:URI="720p.av1.mp4/init-v1-a1.mp4"
+                u = line.split("=")[1].strip().replace('"', "")
                 chunk_url = resolve_url(base_url, u)
                 chunk_urls.append(chunk_url)
             elif add_next_line:
@@ -198,6 +221,7 @@ async def download_parse_m3u8(session: aiohttp.ClientSession, m3u8_url: str) -> 
     os.remove(m3u8_file)
 
     return chunk_urls
+
 
 async def check_parse_m3u8_master(m3u8_file: str) -> Tuple[bool, str]:
     """
@@ -229,40 +253,46 @@ async def check_parse_m3u8_master(m3u8_file: str) -> Tuple[bool, str]:
     # 720p.av1.mp4.m3u8
 
     # Open the m3u8 file and read it line by line
-    with open(m3u8_file, 'r', encoding='utf-8') as f:
+    with open(m3u8_file, "r", encoding="utf-8") as f:
         get_next_line = False
         child_streams = {}
         bandwidth = 0
         for line in f:
             # If the line starts with '#EXT-X-STREAM-INF', the file is a master playlist
-            if line.startswith('#EXT-X-STREAM-INF'):
+            if line.startswith("#EXT-X-STREAM-INF"):
                 # extract the bandwidth
-                bandwidth = int(line.split('BANDWIDTH=')[1].split(',')[0])
-                resolution = line.split('RESOLUTION=')[1].split(',')[0].strip()
+                bandwidth = int(line.split("BANDWIDTH=")[1].split(",")[0])
+                resolution = line.split("RESOLUTION=")[1].split(",")[0].strip()
                 get_next_line = True
             # If the previous line started with '#EXT-X-STREAM-INF',
             # this line contains URL of the stream
             elif get_next_line:
                 url = line.strip()
-                print(f"Found stream '{url}' with bandwidth {bandwidth}, resolution {resolution}")
+                print(
+                    f"Found stream '{url}' with bandwidth {bandwidth}, resolution {resolution}"
+                )
                 child_streams[bandwidth] = url
                 bandwidth = 0
                 get_next_line = False
 
         # If no line started with '#EXT-X-STREAM-INF', the file is not a master playlist
         if len(child_streams) == 0:
-            return False, ''
+            return False, ""
 
         print(f"Found {len(child_streams)} child streams")
 
         # sort the childs by bandwidth
         sorted_child = dict(sorted(child_streams.items(), reverse=True))
-        
+
         # Get the first item in the sorted dictionary, which is the highest bandwidth stream
         best_child = next(iter(sorted_child.items()))
 
-        printc(f"Best stream is '{best_child[1]}' with bandwidth {best_child[0]}\r\n", Colors.BLUE)
+        printc(
+            f"Best stream is '{best_child[1]}' with bandwidth {best_child[0]}\r\n",
+            Colors.BLUE,
+        )
         return True, best_child[1]
+
 
 def get_filename_from_url(url: str) -> str:
     """
@@ -275,7 +305,8 @@ def get_filename_from_url(url: str) -> str:
         str: The extracted filename.
 
     """
-    return url.split('/')[-1].split('?')[0]
+    return url.split("/")[-1].split("?")[0]
+
 
 def get_base_url(url: str) -> str:
     """
@@ -291,49 +322,51 @@ def get_base_url(url: str) -> str:
         >>> get_base_url('https://www.example.com/path/to/file.html')
         'https://www.example.com/path/to'
     """
-    return '/'.join(url.split('/')[:-1])
+    return "/".join(url.split("/")[:-1])
+
 
 def resolve_url(base_url: str, target_url: str) -> str:
     """
     Resolves a target URL against a base URL, handling both relative and absolute URLs properly.
-    
+
     Args:
         base_url (str): The base URL to resolve against
         target_url (str): The target URL (can be relative or absolute)
-        
+
     Returns:
         str: The resolved absolute URL
-        
+
     Examples:
         >>> resolve_url('https://example.com/videos/', 'playlist.m3u8')
         'https://example.com/videos/playlist.m3u8'
-        
+
         >>> resolve_url('https://example.com/videos/', 'hd/playlist.m3u8')
         'https://example.com/videos/hd/playlist.m3u8'
 
         >>> resolve_url('https://example.com/videos/', '/hd/playlist.m3u8')
         'https://example.com/hd/playlist.m3u8'
-        
+
         >>> resolve_url('https://example.com/videos/', 'https://cdn.example.com/playlist.m3u8')
         'https://cdn.example.com/playlist.m3u8'
     """
     # Strip whitespace from both URLs
     base_url = base_url.strip()
     target_url = target_url.strip()
-    
-    if target_url.startswith('http://') or target_url.startswith('https://'):
+
+    if target_url.startswith("http://") or target_url.startswith("https://"):
         # If the target URL is absolute, return it as is
         return target_url
 
     # add trailing slash to base_url if not present
-    if not base_url.endswith('/'):
-        base_url += '/'
+    if not base_url.endswith("/"):
+        base_url += "/"
 
     # Use urllib.parse.urljoin for proper URL resolution
     # This handles relative paths, absolute paths, and complex relative URLs correctly
     resolved_url = urljoin(base_url, target_url)
-    
+
     return resolved_url
+
 
 async def convert_chunk_files_to_mp4(file: str, output: str) -> bool:
     """
@@ -351,69 +384,47 @@ async def convert_chunk_files_to_mp4(file: str, output: str) -> bool:
         printc(f"Converting files in '{file}' to '{output}'", Colors.YELLOW)
         # Use ffmpeg to concatenate the chunk files and save as .mp4
         (
-            ffmpeg
-            .input(file, format='concat', safe=0)
-            .output(output, c='copy')
+            ffmpeg.input(file, format="concat", safe=0)
+            .output(output, c="copy")
             # .run_async(overwrite_output=True, pipe_stdout=True, pipe_stderr=True)
             .run(overwrite_output=True)
         )
 
         printc(f"✓ Finished conversion, '{output}'", Colors.GREEN)
         return True
-    
+
     except ffmpeg.Error as e:
         printc(f"✗ Error converting files: {e.stderr}", Colors.RED)
         return False
 
-# ANSI color codes
-class Colors:
-    RESET = "\033[0m"
-    BLACK = "\033[30m"
-    RED = "\033[31m"
-    GREEN = "\033[32m"
-    YELLOW = "\033[33m"
-    BLUE = "\033[34m"
-    MAGENTA = "\033[35m"
-    CYAN = "\033[36m"
-    WHITE = "\033[37m"
 
-def printc(msg: str, color: str = Colors.RESET) -> None:
-    """
-    Prints a message with the specified color.
-
-    Args:
-        msg (str): The message to print.
-        color (str): The ANSI color code to use for the message. Defaults to RESET (no color).
-
-    Returns:
-        None
-    """
-    if color != Colors.RESET:
-        print(f"{color}{msg}{Colors.RESET}")
-    else:
-        print(msg)
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Create an argument parser
-    parser = argparse.ArgumentParser(description='M3U8 Video Downloader')
+    parser = argparse.ArgumentParser(description="M3U8 Video Downloader")
 
     # Add the url argument. This argument is required.
-    parser.add_argument('-u', '--url', type=str, required=False, help='The M3U8 url to process')
+    parser.add_argument(
+        "-u", "--url", type=str, required=False, help="The M3U8 url to process"
+    )
 
     # Add the output argument. This argument is optional.
-    parser.add_argument('-o', '--output', type=str, required=False, help='The output file name')
+    parser.add_argument(
+        "-o", "--output", type=str, required=False, help="The output file name"
+    )
 
     # Add the path argument. This argument is optional.
-    parser.add_argument('-p', '--path', type=str, required=False, help='The output directory')
+    parser.add_argument(
+        "-p", "--path", type=str, required=False, help="The output directory"
+    )
 
     # Add the debug argument. This argument is optional.
-    parser.add_argument('-d', '--debug', action='store_true', help='Enable debug mode')
+    parser.add_argument("-d", "--debug", action="store_true", help="Enable debug mode")
 
     # Parse the arguments
-    args = parser.parse_args()    # Check if we need to run in interactive mode
+    args = parser.parse_args()  # Check if we need to run in interactive mode
     interactive_mode = args.url is None or args.output is None
-    debug = args.debug == True
-    
+    debug = args.debug
+
     if interactive_mode and args.url is None:
         # Display interactive header
         print("=" * 62)
@@ -430,23 +441,23 @@ if __name__ == '__main__':
     if url is None:
         try:
             url = input("Enter m3u8 URL: ").strip()
-            
+
             if not url:
                 printc("✗ URL cannot be empty", Colors.RED)
                 exit(1)
-            
+
             # Basic URL validation
-            if not (url.startswith('http://') or url.startswith('https://')):
+            if not (url.startswith("http://") or url.startswith("https://")):
                 printc("✗ URL must start with http:// or https://", Colors.RED)
                 exit(1)
-                
+
             # Strip query parameters for validation
-            query_stripped_url = url.split('?')[0]  # Simple approach
-            if not query_stripped_url.endswith('.m3u8'):
+            query_stripped_url = url.split("?")[0]  # Simple approach
+            if not query_stripped_url.endswith(".m3u8"):
                 printc("⚠ URL doesn't end with .m3u8, but continuing...", Colors.YELLOW)
-            
+
             printc(f"✓ Using URL: '{url}'", Colors.GREEN)
-            
+
         except KeyboardInterrupt:
             printc("\n⚠ Operation cancelled by user", Colors.YELLOW)
             exit(0)
@@ -461,7 +472,9 @@ if __name__ == '__main__':
             if interactive_mode:
                 print()
                 print("-" * 62)
-            output_file = input("Enter output filename (press Enter for auto-generated name): ").strip()
+            output_file = input(
+                "Enter output filename (press Enter for auto-generated name): "
+            ).strip()
             # If user just pressed Enter without typing anything, keep it as None
             if not output_file:
                 output_file = None
@@ -472,7 +485,11 @@ if __name__ == '__main__':
             else:
                 if interactive_mode:
                     # Ensure .mp4 extension for display
-                    display_name = output_file if output_file.endswith('.mp4') else f"{output_file}.mp4"
+                    display_name = (
+                        output_file
+                        if output_file.endswith(".mp4")
+                        else f"{output_file}.mp4"
+                    )
                     printc(f"✓ Using filename: {display_name}", Colors.GREEN)
                 else:
                     printc(f"Using filename: {output_file}", Colors.GREEN)
@@ -483,7 +500,9 @@ if __name__ == '__main__':
             if interactive_mode:
                 printc("✓ Using auto-generated filename", Colors.GREEN)
             else:
-                printc("No input provided, using auto-generated filename", Colors.YELLOW)
+                printc(
+                    "No input provided, using auto-generated filename", Colors.YELLOW
+                )
             output_file = None
 
     # Display configuration summary in interactive mode
@@ -491,22 +510,24 @@ if __name__ == '__main__':
         print()
         print("=" * 62)
         printc("Final Download Configuration:", Colors.CYAN)
-        
+
         # Determine output directory for display
         display_dir = args.path if args.path else "output"
-        
+
         # Determine output filename for display
         if output_file:
-            display_filename = output_file if output_file.endswith('.mp4') else f"{output_file}.mp4"
+            display_filename = (
+                output_file if output_file.endswith(".mp4") else f"{output_file}.mp4"
+            )
         else:
             display_filename = "auto-generated (timestamp-output.mp4)"
-        
+
         print(f"  📽️  URL: '{url}'")
         print(f"  📁 Output: '{display_filename}'")
         print(f"  📂 Directory: '{display_dir}'")
         print("=" * 62)
         print()
-        
+
         try:
             input("Press Enter to start download or Ctrl+C to cancel...")
             print()

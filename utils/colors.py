@@ -10,6 +10,7 @@ class Colors:
     CYAN = "\033[36m"
     WHITE = "\033[37m"
 
+
 def printc(msg: str, color: str = Colors.RESET) -> None:
     """
     Prints a message with the specified color.
