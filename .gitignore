@@ -1,6 +1,13 @@
 output/
 temp/
 
+# AI
+.claude/
+CLAUDE.md
+.mcp.json
+nul
+
+# IDEs and editors
 .vscode/*
 .DS_Store
 

@@ -1,8 +1,7 @@
 # M3U8 Video Downloader
 
-[![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Python](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 A high-performance, async Python application for downloading M3U8 video streams and converting them to MP4 format. Features intelligent master playlist handling, concurrent downloads, retry logic, and an interactive command-line interface.
 
@@ -60,7 +59,7 @@ ffmpeg -version
 ```
 
 ### Python Requirements
-- **Python 3.11+** is required
+- **Python 3.13+** is required
 - Dependencies: `aiohttp`, `ffmpeg-python`
 
 ## 🚀 Quick Start
@@ -272,9 +271,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 🐛 **Bug Reports**: [GitHub Issues](https://github.com/dennislwy/m3u8-video-downloader/issues)
 - 💡 **Feature Requests**: [GitHub Discussions](https://github.com/dennislwy/m3u8-video-downloader/discussions)
 - 📧 **Contact**: [wylee2000@gmail.com](mailto:wylee2000@gmail.com)
-
----
-
-<div align="center">
-  Made with ❤️ by <a href="https://github.com/dennislwy">Dennis Lee</a>
-</div>
