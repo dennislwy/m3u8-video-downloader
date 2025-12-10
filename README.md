@@ -101,6 +101,7 @@ python main.py [OPTIONS]
 | `-u, --url`    | M3U8 playlist URL      | No*      | Interactive prompt       |
 | `-o, --output` | Output filename (.mp4) | No       | Auto-generated timestamp |
 | `-p, --path`   | Output directory       | No       | `./output/`              |
+| `-d, --debug`  | Enable debug mode      | No       | False                    |
 
 *\*If not provided, the application will prompt interactively*
 
@@ -188,9 +189,32 @@ Example: 1733404123847-output.mp4
 # Customize concurrent downloads (default: 6)
 export M3U8_MAX_CONCURRENT=10
 
-# Custom temporary directory (detault: temp)
+# Custom temporary directory (default: temp)
 export M3U8_TEMP_DIR="./custom_temp"
+
+# Maximum number of retries for downloading files (default: 3)
+export M3U8_MAX_RETRIES=3
+
+# Chunk byte size for downloading files (default: 8192)
+export M3U8_CHUNK_SIZE=8192
+
+# Total timeout for requests in seconds (default: 30)
+export M3U8_TIMEOUT_TOTAL=30
+
+# Connection timeout in seconds (default: 10)
+export M3U8_TIMEOUT_CONNECT=10
 ```
+
+### All Configuration Options
+
+| Variable               | Description                          | Default |
+| ---------------------- | ------------------------------------ | ------- |
+| `M3U8_TEMP_DIR`        | Temporary directory for chunk files  | `temp`  |
+| `M3U8_MAX_CONCURRENT`  | Maximum concurrent downloads         | `6`     |
+| `M3U8_MAX_RETRIES`     | Maximum retry attempts per file      | `3`     |
+| `M3U8_CHUNK_SIZE`      | Download chunk size in bytes         | `8192`  |
+| `M3U8_TIMEOUT_TOTAL`   | Total request timeout (seconds)      | `30`    |
+| `M3U8_TIMEOUT_CONNECT` | Connection timeout (seconds)         | `10`    |
 
 ## 📊 Progress & Monitoring
 
@@ -247,13 +271,119 @@ Progress: 153/276 (55.4%) [█████████████░░░░�
 - **Output**: MP4 containers with original codecs
 - **Master playlists**: HLS adaptive streaming support
 
+## 👨‍💻 Development
+
+### Setting Up Development Environment
+
+```bash
+# Clone the repository
+git clone https://github.com/dennislwy/m3u8-video-downloader.git
+cd m3u8-video-downloader
+
+# Install dependencies with uv (recommended)
+uv sync
+
+# Install pre-commit hooks
+uv run pre-commit install
+```
+
+### Code Quality Tools
+
+This project uses several tools to maintain code quality:
+
+#### Linting and Formatting
+```bash
+# Run Ruff linter
+uv run ruff check .
+
+# Run Ruff linter with auto-fix
+uv run ruff check . --fix
+
+# Run Ruff formatter
+uv run ruff format .
+```
+
+#### Type Checking
+```bash
+# Run mypy for static type checking
+uv run mypy .
+```
+
+#### Security Analysis
+```bash
+# Run Bandit security linter
+uv run bandit -r . -c pyproject.toml
+
+# Audit dependencies for security vulnerabilities
+uv run pip-audit
+```
+
+#### Pre-commit Hooks
+
+The project uses pre-commit hooks to automatically check code quality before commits:
+
+- **ruff-check**: Lints code and auto-fixes issues
+- **ruff-format**: Formats code according to style guidelines
+- **mypy**: Performs static type checking
+- **bandit**: Scans for security vulnerabilities
+- **pre-commit-update**: Keeps hooks up to date
+- **General checks**: Trailing whitespace, EOF, YAML/TOML syntax, large files, merge conflicts, private keys
+
+```bash
+# Run pre-commit on all files manually
+uv run pre-commit run --all-files
+
+# Update pre-commit hooks
+uv run pre-commit autoupdate
+```
+
+### Running Tests
+
+```bash
+# Run the application in test mode
+python main.py -u "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" -o "test_video.mp4"
+```
+
+### Project Structure
+
+```
+m3u8-video-downloader/
+├── main.py                 # Entry point and core logic
+├── utils/
+│   ├── __init__.py        # Package initialization
+│   ├── colors.py          # ANSI color utilities
+│   ├── download.py        # Async download functions
+│   └── progress.py        # Progress tracking
+├── pyproject.toml         # Project metadata and tool configs
+├── uv.lock               # Dependency lock file
+├── .pre-commit-config.yaml # Pre-commit hooks configuration
+└── README.md             # This file
+```
+
 ## 🤝 Contributing
+
+Contributions are welcome! Please follow these steps:
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m 'Add amazing feature'`
-4. Push to branch: `git push origin feature/amazing-feature`
-5. Submit a Pull Request
+3. Make your changes and ensure all checks pass:
+   ```bash
+   uv run ruff check . --fix
+   uv run ruff format .
+   uv run mypy .
+   uv run pre-commit run --all-files
+   ```
+4. Commit changes: `git commit -m 'Add amazing feature'`
+5. Push to branch: `git push origin feature/amazing-feature`
+6. Submit a Pull Request
+
+### Coding Standards
+
+- Follow PEP 8 style guidelines (enforced by Ruff)
+- Add type hints for all functions (checked by mypy)
+- Write descriptive docstrings
+- Keep functions focused and modular
+- Add comments for complex logic
 
 ## 📄 License
 
