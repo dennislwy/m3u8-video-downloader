@@ -377,7 +377,7 @@ Contributions are welcome! Please follow these steps:
 5. Push to branch: `git push origin feature/amazing-feature`
 6. Submit a Pull Request
 
-### 🙏 Sponsor
+## 🙏 Sponsor
 
 Like this project? **Leave a star**! ⭐⭐⭐⭐⭐
 
