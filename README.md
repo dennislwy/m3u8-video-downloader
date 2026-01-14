@@ -207,14 +207,14 @@ export M3U8_TIMEOUT_CONNECT=10
 
 ### All Configuration Options
 
-| Variable               | Description                          | Default |
-| ---------------------- | ------------------------------------ | ------- |
-| `M3U8_TEMP_DIR`        | Temporary directory for chunk files  | `temp`  |
-| `M3U8_MAX_CONCURRENT`  | Maximum concurrent downloads         | `6`     |
-| `M3U8_MAX_RETRIES`     | Maximum retry attempts per file      | `3`     |
-| `M3U8_CHUNK_SIZE`      | Download chunk size in bytes         | `8192`  |
-| `M3U8_TIMEOUT_TOTAL`   | Total request timeout (seconds)      | `30`    |
-| `M3U8_TIMEOUT_CONNECT` | Connection timeout (seconds)         | `10`    |
+| Variable               | Description                         | Default |
+| ---------------------- | ----------------------------------- | ------- |
+| `M3U8_TEMP_DIR`        | Temporary directory for chunk files | `temp`  |
+| `M3U8_MAX_CONCURRENT`  | Maximum concurrent downloads        | `6`     |
+| `M3U8_MAX_RETRIES`     | Maximum retry attempts per file     | `3`     |
+| `M3U8_CHUNK_SIZE`      | Download chunk size in bytes        | `8192`  |
+| `M3U8_TIMEOUT_TOTAL`   | Total request timeout (seconds)     | `30`    |
+| `M3U8_TIMEOUT_CONNECT` | Connection timeout (seconds)        | `10`    |
 
 ## 📊 Progress & Monitoring
 
@@ -377,13 +377,13 @@ Contributions are welcome! Please follow these steps:
 5. Push to branch: `git push origin feature/amazing-feature`
 6. Submit a Pull Request
 
-### Coding Standards
+### 🙏 Sponsor
 
-- Follow PEP 8 style guidelines (enforced by Ruff)
-- Add type hints for all functions (checked by mypy)
-- Write descriptive docstrings
-- Keep functions focused and modular
-- Add comments for complex logic
+Like this project? **Leave a star**! ⭐⭐⭐⭐⭐
+
+You love what I do? <a href="https://www.buymeacoffee.com/dennislwy" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
+
+Recognized my open-source contributions? [Nominate me](https://stars.github.com/nominate) as GitHub Star! 💫
 
 ## 📄 License
 
@@ -399,4 +399,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - 🐛 **Bug Reports**: [GitHub Issues](https://github.com/dennislwy/m3u8-video-downloader/issues)
 - 💡 **Feature Requests**: [GitHub Discussions](https://github.com/dennislwy/m3u8-video-downloader/discussions)
-- 📧 **Contact**: [wylee2000@gmail.com](mailto:wylee2000@gmail.com)
