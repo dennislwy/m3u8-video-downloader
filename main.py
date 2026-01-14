@@ -436,7 +436,11 @@ if __name__ == "__main__":
 
     # Add the path argument. This argument is optional.
     parser.add_argument(
-        "-p", "--path", type=str, required=False, help="The output directory"
+        "-p",
+        "--path",
+        type=str,
+        required=False,
+        help="The output directory. Defaults to 'output'",
     )
 
     # Add the debug argument. This argument is optional.
